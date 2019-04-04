@@ -18,7 +18,7 @@ public class AST {
         this.leafNodeMap = leafNodeMap;
     }
 
-    public static AST build(String pattern) {
+    public static AST build(String pattern) {//双栈法构建抽象语法树
         Node.leafNodeMap = new HashMap<>();
         LinkedList<Node> valueStack = new LinkedList<>();
         LinkedList<Character> operatorStack = new LinkedList<>();
@@ -35,6 +35,17 @@ public class AST {
                     while (!operatorStack.isEmpty() && comparePriority(operatorStack.peek(), operator) >= 0)
                         valueStack.push(newNode(operatorStack.pop(), valueStack));
                     operatorStack.push(operator);
+                    break;
+                case '(':
+                    if(!isPrevOperator&&!isFirst)//前面是字符
+                        operatorStack.push('&');
+                    operatorStack.push('(');
+                    isFirst = true;
+                    break;
+                case ')':
+                    while(operatorStack.peek() !='(')
+                        valueStack.push(newNode(operatorStack.pop(), valueStack));
+                    operatorStack.pop();
                     break;
                 default:
                     characterSet.add(c);
