@@ -205,7 +205,7 @@ public class DFA {
         int mismatchCnt = 0;
         int i = 0;
         int len = text.length();
-        if(text.equals(""))
+        if(text.equals("") && isEndState(startState))
             res.add("");
         while (i < len) {
             boolean visitedEndState = false;
