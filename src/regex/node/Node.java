@@ -54,6 +54,12 @@ public abstract class Node {
             case '&':
                 newNode = new CatNode(children);
                 break;
+            case '+':
+                newNode = new PlusNode(children);
+                break;
+            case '?':
+                newNode = new QuestionMarkNode(children);
+                break;
             case '|':
                 newNode = new OrNode(children);
                 break;
