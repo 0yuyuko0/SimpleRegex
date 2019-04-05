@@ -205,6 +205,8 @@ public class DFA {
         int mismatchCnt = 0;
         int i = 0;
         int len = text.length();
+        if(text.equals(""))
+            res.add("");
         while (i < len) {
             boolean visitedEndState = false;
             StringBuilder sb = new StringBuilder();
