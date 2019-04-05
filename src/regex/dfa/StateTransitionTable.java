@@ -12,7 +12,7 @@ public class StateTransitionTable {
         Map<Character, State> tmp = transitionMap.get(oldState);
         if (tmp == null)
             return State.emptyState();
-        return tmp.compute(c, (k, v) -> v == null ? State.emptyState() : v);
+        return tmp.getOrDefault(c, DFA.EMPTY_STATE);
     }
 
     public void addStateTransition(State oldState, Character c, State newState) {
