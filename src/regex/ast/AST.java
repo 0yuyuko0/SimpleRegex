@@ -18,7 +18,7 @@ public class AST {
         this.leafNodeMap = leafNodeMap;
     }
 
-    public static AST build(String pattern) {//双栈法构建抽象语法树
+    public static AST buildAST(String pattern) {//双栈法构建抽象语法树
         Node.leafNodeMap = new HashMap<>();
         LinkedList<Node> valueStack = new LinkedList<>();
         LinkedList<Character> operatorStack = new LinkedList<>();

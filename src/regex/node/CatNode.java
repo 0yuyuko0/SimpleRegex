@@ -5,8 +5,8 @@ import java.util.List;
 
 public class CatNode extends Node {
 
-    public CatNode(char value, List<Node> children) {
-        super(value,children);
+    public CatNode(List<Node> children) {
+        super(children);
         assert children.size() == 2;
         Node left = children.get(0);
         Node right = children.get(1);

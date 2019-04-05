@@ -4,24 +4,35 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class State {
-    public Set<Integer> numSet;
+    private static int cnt = 0;
 
-    public State(Set<Integer> numSet) {
-        this.numSet = numSet;
+    private int id;
+
+    public State(){
+        this.id = ++cnt;
+    }
+
+    private State(int id){
+        this.id = id;
     }
 
     public static State emptyState(){
-        return new State(new HashSet<>());
+        return new State(Integer.MIN_VALUE);
     }
 
     @Override
     public boolean equals(Object obj) {
         if(!(obj instanceof State))return false;
-        return numSet.equals(((State) obj).numSet);
+        return this.id == ((State) obj).id;
     }
 
     @Override
     public int hashCode() {
-        return numSet.hashCode();
+        return id;
+    }
+
+    @Override
+    public String toString() {
+        return "State "+id;
     }
 }

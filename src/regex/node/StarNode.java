@@ -4,8 +4,8 @@ import java.util.HashSet;
 import java.util.List;
 
 public class StarNode extends Node {
-    public StarNode(char value, List<Node> children) {
-        super(value, children);
+    public StarNode(List<Node> children) {
+        super(children);
         assert children.size() == 1;
         Node child = children.get(0);
 

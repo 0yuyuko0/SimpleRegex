@@ -6,8 +6,7 @@ import regex.node.LeafNode;
 import regex.node.Node;
 
 import java.util.*;
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class DFA {
     private static final State EMPTY_STATE = State.emptyState();
@@ -16,6 +15,7 @@ public class DFA {
     private Set<State> endStates;
     private Set<State> states;
     private StateTransitionTable transitionTable;
+
 
     private DFA(State startState, Set<State> endStates, Set<State> states, StateTransitionTable transitionTable) {
         this.startState = startState;
@@ -26,7 +26,7 @@ public class DFA {
 
 
     public static DFA compile(String pattern) {
-        return build(AST.build(pattern));
+        return build(AST.buildAST(pattern));
     }
 
     private State trans(State oldState, char c) {
@@ -43,61 +43,167 @@ public class DFA {
 
     private static DFA build(AST ast) {
         Node root = ast.root;
-        State startState = new State(root.firstPosSet);
+        State startState = new State();
         Set<State> endState = new HashSet<>();
         StateTransitionTable transitionTable = new StateTransitionTable();
         Set<Character> characterSet = ast.characterSet;
-        Set<State> visitedState = new HashSet<>();
+        Map<State,Set<Integer>> visitedStateMap = new HashMap<>();
+        Map<Set<Integer>,State>numSetToStateMap = new HashMap<>();
+        numSetToStateMap.put(root.firstPosSet,startState);
+        visitedStateMap.put(startState, root.firstPosSet);
         Queue<State> stateQueue = new LinkedList<>();
         stateQueue.add(startState);
+
         while (!stateQueue.isEmpty()) {
-            State state = stateQueue.poll();
-            visitedState.add(state);
+            State currState = stateQueue.poll();
             boolean isEndState = false;
-            for (int num : state.numSet)
+            Set<Integer>numSetOfCurrState = visitedStateMap.get(currState);
+            for (int num : numSetOfCurrState)
                 if (ast.getLeafNode(num).value == '\0') {
                     isEndState = true;
                     break;
                 }
             if (isEndState)
-                endState.add(state);
+                endState.add(currState);
             for (char ch : characterSet) {
-                Set<Integer> numSet = new HashSet<>();
-                for (int num : state.numSet) {
+                Set<Integer> newNumSet = new HashSet<>();
+                for (int num : numSetOfCurrState) {
                     LeafNode leafNode;
                     if ((leafNode = ast.getLeafNode(num)).value == ch)
-                        numSet.addAll(leafNode.followPosSet);
+                        newNumSet.addAll(leafNode.followPosSet);
                 }
-                if (!numSet.isEmpty()) {
-                    State newState = new State(numSet);
-                    transitionTable.addStateTransition(state, ch, newState);
-                    if (!visitedState.contains(newState))
+                if (!newNumSet.isEmpty()) {
+                    State newState;
+                    if(numSetToStateMap.containsKey(newNumSet))
+                        newState = numSetToStateMap.get(newNumSet);
+                    else {
+                        newState = new State();
+                        visitedStateMap.put(newState, newNumSet);
+                        numSetToStateMap.put(newNumSet, newState);
                         stateQueue.add(newState);
+                    }
+                    transitionTable.addStateTransition(currState, ch, newState);
                 }
             }
         }
-        DFA dfa = new DFA(startState, endState, visitedState, transitionTable);
+
+        DFA dfa = new DFA(startState, endState, visitedStateMap.keySet(), transitionTable);
         //dfa.minimize(characterSet);
         return dfa;
     }
 
+    //
+    private int minimize(Set<Character> characterSet) {
+        int numberOfStateBeforeMinimize= states.size();
+        List<Set<State>> newGroupList = new ArrayList<>();
+        List<Set<State>> oldGroupList;
+        Set<State> allStates = new HashSet<>(states);
+        Set<State> endStates = new HashSet<>(this.endStates);
+        allStates.retainAll(endStates);
+        newGroupList.add(allStates);
+        newGroupList.add(endStates);
+        do {
+            oldGroupList = new ArrayList<>(newGroupList);
+            for (Set<State> oldGroup : oldGroupList) {
+                if (oldGroup.size() == 1) continue;//不可切分
+                List<Set<State>> listOfGroupToMinimize = new ArrayList<>();
+                listOfGroupToMinimize.add(oldGroup);
+                for (char c : characterSet) {
+                    boolean canOldGroupMinimize = false;
+                    Map<Integer, Set<State>> tmpGroupMap = new HashMap<>();
+                    for (State oldState : oldGroup) {
+                        State newState = trans(oldState, c);
+                        int newGroupNumber = groupNumberOfState(newState, newGroupList);
+                        tmpGroupMap.putIfAbsent(newGroupNumber, new HashSet<>());
+                        tmpGroupMap.get(newGroupNumber).add(oldState);
+                    }
+                    Set<Set<State>> groupToRemove = new HashSet<>();
+                    Set<Set<State>> groupToAdd = new HashSet<>();
+                    for (Set<State> tmpGroup : tmpGroupMap.values()) {
+                        for (Set<State> groupToMinimize : listOfGroupToMinimize) {
+                            if (groupToMinimize.containsAll(tmpGroup)
+                                    && tmpGroup.size() < groupToMinimize.size()) {//组被切分成更小的组了
+                                groupToRemove.add(groupToMinimize);
+                                groupToAdd.add(tmpGroup);
+                                canOldGroupMinimize = true;
+                            }
+                        }
+                    }
+                    if (canOldGroupMinimize) {//可以最小化
+                        listOfGroupToMinimize.removeAll(groupToRemove);
+                        listOfGroupToMinimize.addAll(groupToAdd);
+                    }
+                }
+                if (listOfGroupToMinimize.size() != 1) {//最小化过
+                    newGroupList.remove(oldGroup);
+                    newGroupList.addAll(listOfGroupToMinimize);
+                }
+            }
+        } while (!oldGroupList.equals(newGroupList));
 
+        Set<State> newStartStateCandidates = findGroup(this.startState, newGroupList);
+        Set<Set<State>> newEndStatesCandidates =
+                this.endStates.stream()
+                        .map(es -> findGroup(es, newGroupList))
+                        .collect(Collectors.toSet());
+        Map<Set<State>, State> statesToReplaceMap = new HashMap<>();
 
+        State newStartState = newStartStateCandidates.iterator().next();
+        newEndStatesCandidates.remove(newStartState);
+        statesToReplaceMap.put(newStartStateCandidates, newStartState);
+
+        Set<State> newEndStates = new HashSet<>();
+        newEndStatesCandidates
+                .forEach(
+                        candidates -> {
+                            State newEndState = candidates.iterator().next();
+                            candidates.remove(newEndState);
+                            statesToReplaceMap.put(candidates, newEndState);
+                        }
+                );
+
+        this.startState = newStartState;
+        this.endStates = newEndStates;
+        this.states = newGroupList.stream().reduce(new HashSet<>(), (newStates, group) -> {
+            newStates.addAll(group);
+            return newStates;
+        });
+        this.transitionTable.update(statesToReplaceMap);
+        return this.states.size() - numberOfStateBeforeMinimize;
+    }
+
+    private static Set<State> findGroup(State state, List<Set<State>> groupList) {
+        ListIterator<Set<State>> iterator = groupList.listIterator();
+        while (iterator.hasNext()) {
+            Set<State> group = iterator.next();
+            if (group.contains(state))
+                return group;
+        }
+        throw new RuntimeException("没有组的State！！！");
+    }
+
+    private static int groupNumberOfState(State state, List<Set<State>> groupList) {
+        ListIterator<Set<State>> iterator = groupList.listIterator();
+        while (iterator.hasNext())
+            if (iterator.next().contains(state))
+                return iterator.previousIndex();
+        throw new RuntimeException("没有组的State！！！");
+    }
 
 
     public boolean matches(String text) {
-        List<String>res = match(text);
+        List<String> res = match(text);
         return res.size() == 1 && res.get(0).equals(text);
     }
 
     public List<String> match(String text) {
         State currState = startState;
         List<String> res = new LinkedList<>();
-        boolean visitedEndState = false;
         int mismatchCnt = 0;
         int i = 0;
         int len = text.length();
         while (i < len) {
+            boolean visitedEndState = false;
             StringBuilder sb = new StringBuilder();
             for (; i < len; ++i) {
                 char c = text.charAt(i);

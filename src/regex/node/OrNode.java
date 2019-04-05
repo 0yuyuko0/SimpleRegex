@@ -5,8 +5,8 @@ import java.util.List;
 
 public class OrNode extends Node {
 
-    public OrNode(char value, List<Node> children) {
-        super(value,children);
+    public OrNode(List<Node> children) {
+        super(children);
         assert children.size() == 2;
         Node left = children.get(0);
         Node right = children.get(1);

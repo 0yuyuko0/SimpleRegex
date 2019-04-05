@@ -2,6 +2,7 @@ package regex.dfa;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class StateTransitionTable {
     private Map<State, Map<Character, State>> transitionMap = new HashMap<>();
@@ -18,5 +19,20 @@ public class StateTransitionTable {
         transitionMap.computeIfAbsent(oldState, k -> new HashMap<>());
         Map<Character, State> stateMap = transitionMap.get(oldState);
         stateMap.put(c, newState);
+    }
+
+    public void update(Map<Set<State>, State> statesToReplaceMap) {
+        statesToReplaceMap.keySet()
+                .forEach(statesToReplace -> statesToReplace.forEach(transitionMap::remove));
+        Map<State,State>stateToReplaceMap = new HashMap<>();
+        statesToReplaceMap.forEach((oldStates,newState)->{
+            oldStates.forEach(oldState -> stateToReplaceMap.put(oldState, newState));
+        });
+        transitionMap.values().forEach(map->{
+            map.forEach((ch,oldState)->{
+                if(stateToReplaceMap.containsKey(oldState))
+                    map.replace(ch, oldState, stateToReplaceMap.get(oldState));
+            });
+        });
     }
 }

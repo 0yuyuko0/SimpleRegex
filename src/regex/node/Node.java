@@ -24,8 +24,6 @@ public abstract class Node {
         numOfChildrenMap.put('+', 1);
     }
 
-    public char value;
-
     public List<Node> children;
 
     public Set<Integer> firstPosSet;
@@ -34,13 +32,8 @@ public abstract class Node {
 
     public boolean nullable;
 
-    public Node(char value, List<Node> children) {
-        this(value);
+    public Node(List<Node> children) {
         this.children = children;
-    }
-
-    public Node(char value) {
-        this.value = value;
     }
 
 
@@ -56,13 +49,13 @@ public abstract class Node {
         }
         switch (operator) {
             case '*':
-                newNode = new StarNode(operator, children);
+                newNode = new StarNode(children);
                 break;
             case '&':
-                newNode = new CatNode(operator, children);
+                newNode = new CatNode(children);
                 break;
             case '|':
-                newNode = new OrNode(operator, children);
+                newNode = new OrNode(children);
                 break;
         }
         return newNode;

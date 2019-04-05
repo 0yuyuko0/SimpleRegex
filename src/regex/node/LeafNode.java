@@ -6,8 +6,11 @@ import java.util.Set;
 public class LeafNode extends Node {
     public final Set<Integer> followPosSet;
 
+    public char value;
+
     public LeafNode(char value) {
-        super(value);
+        super(null);
+        this.value = value;
         this.nullable = false;
         this.firstPosSet = new HashSet<>();
         this.lastPosSet = new HashSet<>();
